@@ -1,0 +1,10 @@
+
+apartments-duplex-for-sale
+apartments-duplex-for-rent
+villas-for-sale
+villas-for-rent
+vacation-homes-for-sale
+vacation-homes-for-rent
+commercial-for-sale
+commercial-for-rent
+buildings-lands-other
