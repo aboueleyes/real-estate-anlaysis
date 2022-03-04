@@ -1,3 +1,11 @@
 {
-  "cSpell.words": ["astype", "Fayoum", "Menia", "Minya", "pyplot", "tqdm"]
+  "cSpell.words": [
+    "astype",
+    "Fayoum",
+    "fillna",
+    "Menia",
+    "Minya",
+    "pyplot",
+    "tqdm"
+  ]
 }

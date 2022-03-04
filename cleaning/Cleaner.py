@@ -1,3 +1,4 @@
+from cmath import isnan
 from typing import Tuple
 import pandas as pd
 import numpy as np
@@ -250,28 +251,86 @@ class Cleaner:
 
         Returns:
             pd.DataFrame: The dataframe with the compound column
+        Usage:
+            df = extract_compound_from_description(df)
         """
 
         self.logger.info('Extracting compound column from description column')
-        # number of compounds that not null
-        number_of_compound = df[df['compound'].notnull()].shape[0]
-        self.logger.info(
-            f'Before : we have {number_of_compound} compound properties')
 
         df['text'] = df['description'] + ' ' + df['title']
-        df['is_compound'] = df['text'].apply(
+        df['has_compound'] = df['text'].apply(
             lambda x: self.__has_compound(str(x)))
 
-        # set df['compound'] to True if compound is found
+        df['compound'].fillna('Not Available', inplace=True)
+        df['compound'] = ['compound name is specified' if x in 'Not Available' and y ==
+                          True else x for x, y in zip(df['compound'], df['has_compound'])]
 
-        df['compound'] = df['compound'].apply(
-            lambda x: x == 'Yes')
-        df['compound'] = df['compound'] | df['is_compound']
-        df['compound'] = df['compound'].astype(bool)
+        df = df.drop(columns=['text'], axis=1)
+        return df
 
-        number_of_compound = df[df['compound'].notnull()].shape[0]
-        self.logger.info(
-            f'After : we have {number_of_compound} compound properties')
+    def clean_date(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Cleans the date column
 
-        df = df.drop(columns=['text', 'is_compound'], axis=1)
+        Args:
+            date (pd.Series): The date column
+
+        Returns:
+            pd.Series: The cleaned date column
+        """
+        self.logger.info('Cleaning date column')
+        df['date'] = pd.to_datetime(df['date'], infer_datetime_format=True)
+        df['year'] = df['date'].apply(lambda x: x.year)
+        df['month'] = df['date'].apply(lambda x: x.month_name())
+        df['weekday'] = df['date'].apply(lambda x: x.day_name())
+        return df
+
+    def clean_delivery(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Cleans the delivery column
+
+        Args:
+            delivery (pd.Series): The delivery column
+
+        Returns:
+            pd.Series: The cleaned delivery column
+        """
+        self.logger.info('Cleaning delivery column')
+        df['delivery_date_specified'] = df['delivery_date'].apply(
+            lambda x: True if x != x else False)
+        df['delivery_date'].fillna('Not Available', inplace=True)
+        return df
+
+    def clean_area(self, area: pd.Series) -> pd.Series:
+        """Cleans the area column
+
+        Args:
+            area (pd.Series): The area column
+
+        Returns:
+            pd.Series: The cleaned area column
+        """
+        self.logger.info('Cleaning area column')
+        area = area.apply(lambda x: self.__filter_digits(x))
+        return pd.to_numeric(area, errors='coerce')
+
+    def clean_amenities(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Clean amenties column
+
+        Args:
+            df (pd.DataFrame): The dataframe
+
+        Returns:
+            pd.DataFrame: The dataframe with the cleaned amenities column
+        """
+        self.logger.info('Cleaning amenities column')
+        df['amenties_specified'] = df['amenties'].apply(
+            lambda x: True if x != x else False)
+        df['amenties'].fillna('Not Available', inplace=True)
+        amenties = ['Balcony', 'Built in Kitchen Appliances', 'Private Garden', 'Central A/C & heating', 'Security', 'Covered Parking',
+                    'Maids Room', 'Pets Allowed', 'Pool', 'Electricity Meter', 'Water Meter', 'Natural Gas', 'Landline', 'Elevator']
+        df.assign(**{f: 0 for f in amenties})
+        for a in amenties:
+            df[a] = df['amenties'].apply(lambda x: 1 if a in x else 0)
+        df = df.drop(columns=['amenties'], axis=1)
         return df
