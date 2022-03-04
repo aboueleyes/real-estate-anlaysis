@@ -2,7 +2,7 @@ from typing import Tuple
 import pandas as pd
 import numpy as np
 import logging
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 import re
 
 
@@ -98,7 +98,8 @@ class Cleaner:
             governorate (pd.Series): a governorate column
             region (pd.Series): a region column
         Usage:
-            df['city'], df['governorate'], df['region'] = clean_location(df['location'])
+            df['city'], df['governorate'], df['region'] = clean_location(
+                df['location'])
         """
         self.logger.info('Cleaning location column')
         cities = self.__get_governorates_cities(location)
@@ -192,3 +193,85 @@ class Cleaner:
         self.logger.info('Cleaning area column')
         area = area.apply(lambda x: self.__filter_digits(x))
         return pd.to_numeric(area, errors='coerce')
+
+    def __has_furniture(self, x: str) -> bool:
+        if x != x:
+            return False
+        if 'furnished' in x.lower() or 'فرش' in x or 'روش' in x:
+            return True
+        return False
+
+    def extract_furnished_from_description(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Extracts the furnished column from the description column
+
+        Args:
+            df (pd.DataFrame): The dataframe
+
+        Returns:
+            pd.DataFrame: The dataframe with the furnished column
+        """
+
+        self.logger.info('Extracting furnished column from description column')
+        number_of_furnished = df[df['furnished'] == 'Yes'].shape[0]
+        self.logger.info(
+            f'Before : we have {number_of_furnished} furnished properties')
+
+        df['text'] = df['description'] + ' ' + df['title']
+        df['is_furnished'] = df['text'].apply(
+            lambda x: self.__has_furniture(str(x)))
+
+        # set df['furnished'] to True if furnished is found
+
+        df['furnished'] = df['furnished'].apply(
+            lambda x: x == 'Yes')
+        df['furnished'] = df['furnished'] | df['is_furnished']
+        df['furnished'] = df['furnished'].astype(bool)
+
+        number_of_furnished = df[df['furnished'] == True].shape[0]
+        self.logger.info(
+            f'After : we have {number_of_furnished} furnished properties')
+
+        df = df.drop(columns=['text', 'is_furnished'], axis=1)
+        return df
+
+    def __has_compound(self, x: str) -> bool:
+        if x != x:
+            return False
+        if 'compound' in x.lower() or 'وند' in x:
+            return True
+        return False
+
+    def extract_compound_from_description(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Extracts the compound column from the description column
+
+        Args:
+            df (pd.DataFrame): The dataframe
+
+        Returns:
+            pd.DataFrame: The dataframe with the compound column
+        """
+
+        self.logger.info('Extracting compound column from description column')
+        # number of compounds that not null
+        number_of_compound = df[df['compound'].notnull()].shape[0]
+        self.logger.info(
+            f'Before : we have {number_of_compound} compound properties')
+
+        df['text'] = df['description'] + ' ' + df['title']
+        df['is_compound'] = df['text'].apply(
+            lambda x: self.__has_compound(str(x)))
+
+        # set df['compound'] to True if compound is found
+
+        df['compound'] = df['compound'].apply(
+            lambda x: x == 'Yes')
+        df['compound'] = df['compound'] | df['is_compound']
+        df['compound'] = df['compound'].astype(bool)
+
+        number_of_compound = df[df['compound'].notnull()].shape[0]
+        self.logger.info(
+            f'After : we have {number_of_compound} compound properties')
+
+        df = df.drop(columns=['text', 'is_compound'], axis=1)
+        return df
